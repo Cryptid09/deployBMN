@@ -21,7 +21,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:5173","https://buildmynotes.com"],
+    origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
     methods: ["GET", "POST", "PUT"],
     credentials: true,
   },
@@ -35,7 +35,7 @@ connectDB();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173","https://buildmynotes.com"],
+    origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
     methods: ["GET", "POST", "PUT"],
     credentials: true,
   })
