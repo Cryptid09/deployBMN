@@ -86,7 +86,7 @@ const razorpay = new Razorpay({
 // Payment creation route
 app.post("/create-order", async (req, res) => {
   const { userEmail } = req.body;
-  const amount = 1 * 100; // INR 1 in paise for testing
+  const amount = 99 * 100; // INR 1 in paise for testing
 
   try {
     // Check if the user already has premium access
