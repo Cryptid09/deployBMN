@@ -36,10 +36,19 @@ connectDB();
 app.use(
   cors({
     origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
-    methods: ["GET", "POST", "PUT"],
-    credentials: true,
+    methods: ["GET", "POST", "PUT", "OPTIONS"], // Add OPTIONS for preflight
+    allowedHeaders: ["Content-Type", "Authorization"], // Add any other headers you expect
+    credentials: true, // Required for cookies or other authentication tokens
   })
 );
+
+// Preflight request handler
+app.options('*', cors({
+  origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
+  credentials: true,
+}));
+
+
 
 app.use(express.json());
 
