@@ -34,8 +34,8 @@ const Feedback = require('./models/review');
 connectDB();
 
 app.use(cors({
-  origin: ["https://www.buildmynotes.com", "https://buildmynotes.com", "http://localhost:5173"],
-  methods: ["GET", "POST", "PUT", "OPTIONS"],
+  origin: '*',
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"],
   credentials: true,
 }));
@@ -45,7 +45,7 @@ app.options('*', cors());
 
 // Add custom headers middleware
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token');
   res.header('Access-Control-Allow-Credentials', true);
