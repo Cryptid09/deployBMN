@@ -244,7 +244,11 @@ async function generateTranscript(mp3FilePath) {
   try {
     const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
       await fs.readFile(mp3FilePath),
-      { model: "nova-2", smart_format: true, timeout: 300000 } // Set a longer timeout
+      { 
+        model: "nova-2", 
+        smart_format: true, 
+        timeout: 300000 // 5 minutes timeout
+      }
     );
 
     if (error) throw error;
