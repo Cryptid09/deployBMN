@@ -32,7 +32,7 @@ router.post('/login', async (req, res) => {
       { expiresIn: '1h' },
       (err, token) => {
         if (err) throw err;
-        console.log("Generated token:", token);
+       
         res.json({ token, user: { id: user.id, email: user.email } });
       }
     );
@@ -52,12 +52,13 @@ router.get('/check-session', async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.user.id).select('-password');
     if (!user) {
       return res.json({ loggedIn: false });
     }
     res.json({ loggedIn: true, user });
   } catch (error) {
+    console.error('Error verifying token:', error);
     res.json({ loggedIn: false });
   }
 });
