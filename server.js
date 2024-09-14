@@ -35,20 +35,24 @@ connectDB();
 
 app.use(
   cors({
-    origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
-    methods: ["GET", "POST", "PUT", "OPTIONS"], // Add OPTIONS for preflight
-    allowedHeaders: ["Content-Type", "Authorization"], // Add any other headers you expect
-    credentials: true, // Required for cookies or other authentication tokens
+    origin: ["https://www.buildmynotes.com", "https://buildmynotes.com", "http://localhost:5173"],
+    methods: ["GET", "POST", "PUT", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-auth-token"],
+    credentials: true,
   })
 );
 
 // Preflight request handler
-app.options('*', cors({
-  origin: ["http://localhost:5173","https://buildmynotes.com","https://www.buildmynotes.com","http://www.buildmynotes.com"],
-  credentials: true,
-}));
+app.options('*', cors());
 
-
+// Add custom headers middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.buildmynotes.com');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token');
+  res.header('Access-Control-Allow-Credentials', true);
+  next();
+});
 
 app.use(express.json());
 
