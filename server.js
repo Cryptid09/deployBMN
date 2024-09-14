@@ -6,17 +6,19 @@ const session = require("express-session");
 const passport = require("passport");
 const socketIo = require("socket.io");
 const crypto = require("crypto");
-const Razorpay = require("razorpay"); // Razorpay integration
+const Razorpay = require("razorpay");
 const { processVideo } = require("./controllers/videoProcessor");
 const authRoutes = require("./routes/authRoutes");
-const Video = require("./models/Video"); // Import Video model
-const User = require("./models/User"); // Import User model
+const Video = require("./models/Video");
+const User = require("./models/User");
 const MongoStore = require("connect-mongo");
 require("dotenv").config();
-require("./config/passportGoogle"); // Google OAuth strategy setup
+require("./config/passportGoogle");
 const userRoutes = require("./routes/userRoutes");
-require("dotenv").config();
 const connectDB = require("./config/database");
+const Feedback = require('./models/review');
+const jwt = require("jsonwebtoken");
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -27,12 +29,10 @@ const io = socketIo(server, {
   },
 });
 
-// Import the Feedback model
-const Feedback = require('./models/review');
-
 // Connect to MongoDB
 connectDB();
 
+// Updated CORS configuration
 app.use(cors({
   origin: ["https://www.buildmynotes.com", "https://buildmynotes.com", "http://localhost:5173"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -42,19 +42,6 @@ app.use(cors({
 
 // Preflight request handler
 app.options('*', cors());
-
-// Add custom headers middleware
-app.use((req, res, next) => {
-  const allowedOrigins = ["https://www.buildmynotes.com", "https://buildmynotes.com", "http://localhost:5173"];
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-auth-token');
-  res.header('Access-Control-Allow-Credentials', true);
-  next();
-});
 
 app.use(express.json());
 
@@ -69,7 +56,7 @@ app.use(
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      maxAge: 24 * 60 * 60 * 1000,
       httpOnly: true,
     },
   })
@@ -77,8 +64,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-// Login route
 
 // Socket.io setup
 io.on("connection", (socket) => {
@@ -101,10 +86,9 @@ const razorpay = new Razorpay({
 // Payment creation route
 app.post("/create-order", async (req, res) => {
   const { userEmail } = req.body;
-  const amount = 99 * 100; // INR 1 in paise for testing
+  const amount = 99 * 100; // INR 99 in paise
 
   try {
-    // Check if the user already has premium access
     const user = await User.findOne({ email: userEmail });
 
     if (!user) {
@@ -123,12 +107,12 @@ app.post("/create-order", async (req, res) => {
     };
     const order = await razorpay.orders.create(orderOptions);
 
-    console.log("Razorpay Order:", order); // Log the order details for debugging
+    console.log("Razorpay Order:", order);
 
     res.status(200).json({
       success: true,
       orderId: order.id,
-      amount: amount / 100, // Return amount in INR
+      amount: amount / 100,
     });
   } catch (error) {
     console.error("Error creating order:", error);
@@ -160,7 +144,7 @@ app.post("/verify-payment", async (req, res) => {
       const now = new Date();
       user.isPremium = true;
       user.premiumStartDate = now;
-      user.premiumEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      user.premiumEndDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       await user.save();
 
       res.status(200).json({
@@ -204,7 +188,11 @@ app.get("/user-status/:userEmail", async (req, res) => {
   }
 });
 
+// Process video route with increased timeout
 app.post("/process-video", async (req, res) => {
+  // Increase the timeout to 10 minutes (600000 ms)
+  req.setTimeout(600000);
+
   const { sbatId, userEmail } = req.body;
   console.log(`Received request to process video with sbatId: ${sbatId} and userEmail: ${userEmail}`);
 
@@ -222,13 +210,11 @@ app.post("/process-video", async (req, res) => {
 
     if (video) {
       console.log("Video already exists, returning existing notes");
-      // Add user email to video's userEmails array if not already present
       if (!video.userEmails.includes(userEmail)) {
         video.userEmails.push(userEmail);
         await video.save();
       }
 
-      // Add video to user's videos array if not already present
       if (!user.videos.includes(video._id)) {
         user.videos.push(video._id);
         user.notesGenerated += 1;
@@ -274,12 +260,7 @@ app.get("/auth/check-session", (req, res) => {
 // Routes
 app.use("/api/users", userRoutes);
 
-const PORT = process.env.PORT || 5009;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-// New route to fetch a single note
+// Fetch single note route
 app.get("/notes/:noteId", async (req, res) => {
   try {
     const note = await Video.findById(req.params.noteId);
@@ -287,23 +268,19 @@ app.get("/notes/:noteId", async (req, res) => {
       return res.status(404).json({ error: "Note not found" });
     }
 
-    // Assuming req.user contains the authenticated user's information
     const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Increment notesGenerated count
     user.notesGenerated += 1;
     await user.save();
 
-    // Add the video to user's videos array if it's not already there
     if (!user.videos.includes(note._id)) {
       user.videos.push(note._id);
       await user.save();
     }
 
-    // Add user's email to video's userEmails array if it's not already there
     if (!note.userEmails.includes(user.email)) {
       note.userEmails.push(user.email);
       await note.save();
@@ -319,7 +296,7 @@ app.get("/notes/:noteId", async (req, res) => {
   }
 });
 
-// New route to fetch notes list
+// Fetch notes list route
 app.get("/notes/:email", async (req, res) => {
   try {
     console.log(`Fetching notes for email: ${req.params.email}`);
@@ -343,8 +320,6 @@ app.get("/notes/:email", async (req, res) => {
   }
 });
 
-const jwt = require("jsonwebtoken");
-
 // Middleware to check JWT token
 const auth = (req, res, next) => {
   const token = req.header("x-auth-token");
@@ -363,13 +338,12 @@ const auth = (req, res, next) => {
   }
 };
 
-// Use this middleware for protected routes
+// Update user route
 app.put("/auth/update-user", auth, async (req, res) => {
   try {
     const userId = req.user.id;
     const updateData = req.body;
 
-    // Remove any fields that shouldn't be updated directly
     delete updateData.password;
     delete updateData._id;
     delete updateData.email;
@@ -391,6 +365,7 @@ app.put("/auth/update-user", auth, async (req, res) => {
   }
 });
 
+// Fetch notes by sbatId route
 app.get("/api/notes/:sbatId", async (req, res) => {
   try {
     const { sbatId } = req.params;
@@ -410,13 +385,11 @@ app.get("/api/notes/:sbatId", async (req, res) => {
       return res.status(404).json({ error: "Notes not found for this video" });
     }
 
-    // Add user email to video's userEmails array if not already present
     if (!video.userEmails.includes(userEmail)) {
       video.userEmails.push(userEmail);
       await video.save();
     }
 
-    // Add video to user's videos array if not already present
     if (!user.videos.includes(video._id)) {
       user.videos.push(video._id);
       user.notesGenerated += 1;
@@ -434,7 +407,7 @@ app.get("/api/notes/:sbatId", async (req, res) => {
   }
 });
 
-// Route to handle feedback submission
+// Feedback submission route
 app.post("/api/feedback", auth, async (req, res) => {
   const { rating, message, video, userEmail } = req.body;
 
@@ -461,4 +434,9 @@ app.post("/api/feedback", auth, async (req, res) => {
     console.error("Error submitting feedback:", error);
     res.status(500).json({ error: "An error occurred while submitting feedback" });
   }
+});
+
+const PORT = process.env.PORT || 5009;
+server.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
