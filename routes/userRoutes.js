@@ -104,6 +104,7 @@ router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp, username, password } = req.body;
 
+    // Check if the OTP is valid
     if (otpStorage.get(email) !== otp) {
       return res.status(400).json({ message: 'Invalid OTP' });
     }
@@ -116,11 +117,12 @@ router.post('/verify-otp', async (req, res) => {
     const user = new User({
       username,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      isVerified: true // Mark user as verified
     });
 
     await user.save();
-    otpStorage.delete(email);
+    otpStorage.delete(email); // Remove OTP from storage
 
     res.status(201).json({ message: 'User registered successfully' });
   } catch (error) {
