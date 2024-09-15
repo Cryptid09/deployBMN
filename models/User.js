@@ -12,7 +12,6 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    
   },
   notesGenerated: {
     type: Number,
@@ -33,7 +32,14 @@ const UserSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Video'
     }
-  ]
+  ],
+  verificationCode: { // Field to store the verification code
+    type: String,
+  },
+  isVerified: { // Flag to indicate if the user is verified
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });
