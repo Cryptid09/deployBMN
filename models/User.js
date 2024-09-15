@@ -33,14 +33,17 @@ const UserSchema = new mongoose.Schema({
       ref: 'Video'
     }
   ],
-  verificationCode: { // Field to store the verification code
+  verificationCode: {
     type: String,
   },
-  isVerified: { // Flag to indicate if the user is verified
+  isVerified: {
     type: Boolean,
     default: false
   },
-  freeTrials: { type: Number, default: 0 }
+  freeTrials: {
+    type: Number,
+    default: 0
+  }
 }, {
   timestamps: true
 });
