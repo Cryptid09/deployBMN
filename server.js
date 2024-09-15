@@ -452,6 +452,7 @@ app.post("/auth/signup-with-referral", async (req, res) => {
   try {
     // Create new user
     const newUser = await User.create({ email, password });
+    console.log(`Created new user ${newUser.email} with freeTrials: ${newUser.freeTrials}`);
 
     // Find referrer and grant free trial
     if (referralCode) {
@@ -459,6 +460,7 @@ app.post("/auth/signup-with-referral", async (req, res) => {
       if (referrer) {
         referrer.freeTrials += 1;
         await referrer.save();
+        console.log(`Updated referrer ${referrer.email} freeTrials to ${referrer.freeTrials}`);
       }
     }
 
