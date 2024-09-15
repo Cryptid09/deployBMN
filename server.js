@@ -456,11 +456,19 @@ app.post("/auth/signup-with-referral", async (req, res) => {
 
     // Find referrer and grant free trial
     if (referralCode) {
-      const referrer = await User.findById(referralCode);
-      if (referrer) {
-        referrer.freeTrials += 1;
-        await referrer.save();
-        console.log(`Updated referrer ${referrer.email} freeTrials to ${referrer.freeTrials}`);
+      try {
+        const updatedReferrer = await User.findByIdAndUpdate(
+          referralCode,
+          { $inc: { freeTrials: 1 } },
+          { new: true }
+        );
+        if (updatedReferrer) {
+          console.log(`Updated referrer ${updatedReferrer.email} freeTrials to ${updatedReferrer.freeTrials}`);
+        } else {
+          console.log(`Referrer with ID ${referralCode} not found`);
+        }
+      } catch (referrerError) {
+        console.error("Error updating referrer:", referrerError);
       }
     }
 
@@ -491,6 +499,19 @@ app.get("/api/users/referral-link", async (req, res) => {
     res.json({ referralLink });
   } catch (error) {
     console.error("Error generating referral link:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/user/free-trials/:userId", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ freeTrials: user.freeTrials });
+  } catch (error) {
+    console.error("Error fetching user free trials:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
