@@ -190,6 +190,9 @@ app.get("/user-status/:userEmail", async (req, res) => {
 
 // Process video route with increased timeout
 app.post("/process-video", async (req, res) => {
+  // Increase the timeout to 10 minutes (600000 ms)
+  req.setTimeout(600000);
+
   const { sbatId, userEmail } = req.body;
   console.log(`Received request to process video with sbatId: ${sbatId} and userEmail: ${userEmail}`);
 
@@ -205,8 +208,8 @@ app.post("/process-video", async (req, res) => {
 
     let video = await Video.findOne({ sbatId });
 
-    if (video && video.status === 'completed') {
-      console.log("Video already processed, returning existing notes");
+    if (video) {
+      console.log("Video already exists, returning existing notes");
       if (!video.userEmails.includes(userEmail)) {
         video.userEmails.push(userEmail);
         await video.save();
@@ -219,37 +222,29 @@ app.post("/process-video", async (req, res) => {
       }
 
       return res.json({
-        status: 'completed',
+        message: "Video already processed, returning existing notes",
         notes: video.notes,
         transcriptLink: video.transcription,
         notesGenerated: user.notesGenerated,
       });
-    } else if (!video) {
-      video = new Video({
-        sbatId,
-        videoLink: `https://scaler.com/class/${sbatId}`,
-        status: 'processing',
-        userEmails: [userEmail]
-      });
-      await video.save();
-
-      // Start processing in the background
-      videoQueue.add({ sbatId, userEmail });
-
-      return res.json({
-        status: 'processing',
-        message: "Video processing started",
-      });
     } else {
-      // Video exists but is still processing
+      console.log("Video not found, starting processing");
+      const result = await processVideo(sbatId, userEmail);
+
       return res.json({
-        status: 'processing',
-        message: "Video is still being processed",
+        message: "Video processed successfully",
+        notes: result.notes,
+        transcriptLink: result.transcription,
+        notesGenerated: user.notesGenerated,
       });
     }
   } catch (error) {
     console.error("Error processing video:", error);
-    res.status(500).json({ error: "An error occurred while processing the video" });
+    if (error && error.message && error.message.includes('FFmpeg is not installed')) {
+      res.status(500).json({ error: "FFmpeg is not installed on the server. Please contact support." });
+    } else {
+      res.status(500).json({ error: "An error occurred while processing the video" });
+    }
   }
 });
 
@@ -438,60 +433,6 @@ app.post("/api/feedback", auth, async (req, res) => {
   } catch (error) {
     console.error("Error submitting feedback:", error);
     res.status(500).json({ error: "An error occurred while submitting feedback" });
-  }
-});
-
-app.get("/api/notes/:sbatId", async (req, res) => {
-  const { sbatId } = req.params;
-  const { userEmail } = req.query;
-
-  if (!sbatId || !userEmail) {
-    return res.status(400).json({ error: "Missing sbatId or userEmail" });
-  }
-
-  try {
-    const video = await Video.findOne({ sbatId });
-    if (!video) {
-      return res.status(404).json({ error: "Video not found" });
-    }
-
-    if (video.status === 'completed') {
-      const user = await User.findOne({ email: userEmail });
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      if (!video.userEmails.includes(userEmail)) {
-        video.userEmails.push(userEmail);
-        await video.save();
-      }
-
-      if (!user.videos.includes(video._id)) {
-        user.videos.push(video._id);
-        user.notesGenerated += 1;
-        await user.save();
-      }
-
-      return res.json({
-        status: 'completed',
-        notes: video.notes,
-        transcriptLink: video.transcription,
-        notesGenerated: user.notesGenerated,
-      });
-    } else if (video.status === 'processing') {
-      return res.json({
-        status: 'processing',
-        message: "Video is still being processed",
-      });
-    } else {
-      return res.json({
-        status: 'error',
-        message: "An error occurred while processing the video",
-      });
-    }
-  } catch (error) {
-    console.error("Error fetching video status:", error);
-    res.status(500).json({ error: "An error occurred while fetching the video status" });
   }
 });
 
