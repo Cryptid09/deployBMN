@@ -189,16 +189,22 @@ async function processVideo(sbatId, userEmail) {
       throw new Error('User not found');
     }
 
+    console.log(`[${new Date().toISOString()}] User found:`, {
+      email: user.email,
+      notesGenerated: user.notesGenerated,
+      freeTrials: user.freeTrials
+    });
+
     let video = await Video.findOne({ sbatId });
     if (video) {
-      // Update existing video
+      console.log(`[${new Date().toISOString()}] Existing video found for sbatId: ${sbatId}`);
       video.notes = notes;
       video.transcription = transcript;
       if (!video.userEmails.includes(userEmail)) {
         video.userEmails.push(userEmail);
       }
     } else {
-      // Create new video
+      console.log(`[${new Date().toISOString()}] Creating new video for sbatId: ${sbatId}`);
       video = new Video({
         sbatId,
         videoLink: `https://scaler.com/class/${sbatId}`,
@@ -206,20 +212,26 @@ async function processVideo(sbatId, userEmail) {
         transcription: transcript,
         userEmails: [userEmail]
       });
-
-      await video.save();
     }
+
+    await video.save();
+    console.log(`[${new Date().toISOString()}] Video saved. ID: ${video._id}`);
 
     if (!user.videos.includes(video._id)) {
       user.videos.push(video._id);
       user.notesGenerated += 1;
+      console.log(`[${new Date().toISOString()}] Updating user. New notesGenerated: ${user.notesGenerated}`);
       await user.save();
     }
 
-    console.log(`[${new Date().toISOString()}] Video information saved to database. Video ID: ${video._id}, User ID: ${user._id}`);
+    console.log(`[${new Date().toISOString()}] Video processing completed. User state:`, {
+      email: user.email,
+      notesGenerated: user.notesGenerated,
+      freeTrials: user.freeTrials
+    });
 
     console.log(`[${new Date().toISOString()}] Video processing completed successfully`);
-    return { notes, transcription: transcript };
+    return { notes, transcription: transcript, notesGenerated: user.notesGenerated };
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in processVideo:`, error);
     throw error;

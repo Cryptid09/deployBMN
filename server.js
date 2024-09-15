@@ -448,27 +448,33 @@ app.post("/api/feedback", auth, async (req, res) => {
 // Referral signup route
 app.post("/auth/signup-with-referral", async (req, res) => {
   const { email, password, referralCode } = req.body;
+  console.log(`[${new Date().toISOString()}] Signup attempt with referral. Email: ${email}, ReferralCode: ${referralCode}`);
 
   try {
     // Create new user
     const newUser = await User.create({ email, password });
-    console.log(`Created new user ${newUser.email} with freeTrials: ${newUser.freeTrials}`);
+    console.log(`[${new Date().toISOString()}] Created new user ${newUser.email} with freeTrials: ${newUser.freeTrials}`);
 
     // Find referrer and grant free trial
     if (referralCode) {
       try {
+        console.log(`[${new Date().toISOString()}] Attempting to update referrer with ID: ${referralCode}`);
+        const referrer = await User.findById(referralCode);
+        console.log(`[${new Date().toISOString()}] Referrer before update:`, referrer);
+
         const updatedReferrer = await User.findByIdAndUpdate(
           referralCode,
           { $inc: { freeTrials: 1 } },
           { new: true }
         );
+
         if (updatedReferrer) {
-          console.log(`Updated referrer ${updatedReferrer.email} freeTrials to ${updatedReferrer.freeTrials}`);
+          console.log(`[${new Date().toISOString()}] Updated referrer ${updatedReferrer.email} freeTrials to ${updatedReferrer.freeTrials}`);
         } else {
-          console.log(`Referrer with ID ${referralCode} not found`);
+          console.log(`[${new Date().toISOString()}] Referrer with ID ${referralCode} not found`);
         }
       } catch (referrerError) {
-        console.error("Error updating referrer:", referrerError);
+        console.error(`[${new Date().toISOString()}] Error updating referrer:`, referrerError);
       }
     }
 
