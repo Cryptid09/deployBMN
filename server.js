@@ -348,9 +348,9 @@ const auth = (req, res, next) => {
 };
 
 // Update user route
-app.put("/auth/update-user", auth, async (req, res) => {
+app.put("/auth/update-user", async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.body.userId; // Get userId from the request body instead of auth middleware
     const updateData = req.body;
 
     delete updateData.password;
