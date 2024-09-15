@@ -181,6 +181,7 @@ app.get("/user-status/:userEmail", async (req, res) => {
       premiumStartDate: user.premiumStartDate,
       premiumEndDate: user.premiumEndDate,
       notesGenerated: user.notesGenerated || 0,
+      freeTrials: user.freeTrials || 0,
     });
   } catch (error) {
     console.error("Error fetching user status:", error);
@@ -259,6 +260,14 @@ app.get("/auth/check-session", (req, res) => {
 
 // Routes
 app.use("/api/users", userRoutes);
+
+// Referral route
+app.get("/api/referral/:referralCode", async (req, res) => {
+  const { referralCode } = req.params;
+  // Logic to handle referral code
+  // Store the referral code in session or send it to the frontend
+  res.redirect("/signup?referral=" + referralCode);
+});
 
 // Fetch single note route
 app.get("/notes/:noteId", async (req, res) => {
@@ -433,6 +442,54 @@ app.post("/api/feedback", auth, async (req, res) => {
   } catch (error) {
     console.error("Error submitting feedback:", error);
     res.status(500).json({ error: "An error occurred while submitting feedback" });
+  }
+});
+
+// Referral signup route
+app.post("/auth/signup-with-referral", async (req, res) => {
+  const { email, password, referralCode } = req.body;
+
+  try {
+    // Create new user
+    const newUser = await User.create({ email, password });
+
+    // Find referrer and grant free trial
+    if (referralCode) {
+      const referrer = await User.findById(referralCode);
+      if (referrer) {
+        referrer.freeTrials += 1;
+        await referrer.save();
+      }
+    }
+
+    // Log in the new user
+    req.login(newUser, (err) => {
+      if (err) {
+        return res.status(500).json({ error: "Error logging in new user" });
+      }
+      return res.status(200).json({ message: "Signup successful", user: newUser });
+    });
+  } catch (error) {
+    console.error("Error during signup:", error);
+    res.status(500).json({ error: "Error during signup" });
+  }
+});
+
+app.get("/api/users/referral-link", async (req, res) => {
+  try {
+    const { email } = req.query;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    // Generate or retrieve the referral link
+    const referralLink = `https://buildmynotes.com/signup?ref=${user._id}`;
+    
+    res.json({ referralLink });
+  } catch (error) {
+    console.error("Error generating referral link:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

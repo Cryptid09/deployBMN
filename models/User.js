@@ -39,7 +39,8 @@ const UserSchema = new mongoose.Schema({
   isVerified: { // Flag to indicate if the user is verified
     type: Boolean,
     default: false
-  }
+  },
+  freeTrials: { type: Number, default: 0 }
 }, {
   timestamps: true
 });
