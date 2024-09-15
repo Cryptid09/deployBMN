@@ -207,6 +207,10 @@ app.post("/process-video", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    if (!user.isPremium && user.notesGenerated >= MAX_TRIALS + user.freeTrials) {
+      return res.status(403).json({ error: "Free trial limit reached" });
+    }
+
     let video = await Video.findOne({ sbatId });
 
     if (video) {
@@ -232,11 +236,19 @@ app.post("/process-video", async (req, res) => {
       console.log("Video not found, starting processing");
       const result = await processVideo(sbatId, userEmail);
 
+      // Update user's notesGenerated and freeTrials
+      user.notesGenerated += 1;
+      if (!user.isPremium && user.notesGenerated > MAX_TRIALS) {
+        user.freeTrials = Math.max(0, user.freeTrials - 1);
+      }
+      await user.save();
+
       return res.json({
         message: "Video processed successfully",
         notes: result.notes,
         transcriptLink: result.transcription,
         notesGenerated: user.notesGenerated,
+        freeTrials: user.freeTrials,
       });
     }
   } catch (error) {

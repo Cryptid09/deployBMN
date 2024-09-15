@@ -23,7 +23,7 @@ const transporter = nodemailer.createTransport({
 // Register a new user
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, referralCode } = req.body;
 
     // Validate input
     if (!username || !email || !password) {
@@ -34,6 +34,15 @@ router.post('/register', async (req, res) => {
     let user = await User.findOne({ email });
     if (user) {
       return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // Check if there's a valid referral code
+    if (referralCode) {
+      const referrer = await User.findById(referralCode);
+      if (referrer) {
+        // Increment the referrer's freeTrials
+        await User.findByIdAndUpdate(referralCode, { $inc: { freeTrials: 1 } });
+      }
     }
 
     // Generate OTP
@@ -118,7 +127,8 @@ router.post('/verify-otp', async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      isVerified: true // Mark user as verified
+      isVerified: true, // Mark user as verified
+      freeTrials: 1 // Set initial free trial
     });
 
     await user.save();
