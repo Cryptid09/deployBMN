@@ -30,7 +30,7 @@ async function processVideo(sbatId, userEmail) {
   try {
     console.log(`[${new Date().toISOString()}] Fetching m3u8 URLs`);
     const apiResponse = await axios.get(
-      `https://metabase.interviewbit.com/api/embed/card/eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MjA2MDN9LCJwYXJhbXMiOnt9LCJleHAiOjE3MjU4MDc1MTJ9.yMRVwznv6WFxGETyCI6P1GNGWItqllM06PRW4b0wVHc/query`,
+      `https://metabase.interviewbit.com/api/embed/card/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MjA2MDN9LCJwYXJhbXMiOnt9LCJleHAiOjE3NDE3MDk1NTN9.Z6ob2UjkUXJyfNe8wFc2i2qnfevKkIa4Y63Awmrde3g/query`,
       {
         params: { sbat_id: sbatId },
       }
@@ -46,6 +46,9 @@ async function processVideo(sbatId, userEmail) {
     const outputDir = path.join(__dirname, "../output");
     await fs.mkdir(outputDir, { recursive: true });
     console.log(`[${new Date().toISOString()}] Created output directory: ${outputDir}`);
+
+    const pLimit = (await import('p-limit')).default;
+    const limit = pLimit(50); // Adjust the concurrency limit as needed
 
     let allTsFilePaths = [];
 
@@ -69,15 +72,27 @@ async function processVideo(sbatId, userEmail) {
 
         const baseUrl = m3u8Url.substring(0, m3u8Url.lastIndexOf("/") + 1);
 
-        for (let j = 0; j < segments.length; j++) {
-          const segmentUrl = new URL(segments[j].uri, baseUrl).toString();
-          console.log(`[${new Date().toISOString()}] Downloading segment ${j + 1}/${segments.length} from m3u8 ${i + 1}`);
-          const segmentResponse = await axios.get(segmentUrl, { responseType: "arraybuffer" });
-          const tsFilePath = path.join(outputDir, `segment_${i}_${j}.ts`);
-          await fs.writeFile(tsFilePath, segmentResponse.data);
-          allTsFilePaths.push(`file '${tsFilePath}'`);
-          console.log(`[${new Date().toISOString()}] Saved segment to ${tsFilePath}`);
-        }
+        // Parallel download of segments with concurrency limit
+        const downloadPromises = segments.map((segment, j) =>
+          limit(async () => {
+            const segmentUrl = new URL(segment.uri, baseUrl).toString();
+            console.log(`[${new Date().toISOString()}] Downloading segment ${j + 1}/${segments.length} from m3u8 ${i + 1}`);
+            const segmentResponse = await axios.get(segmentUrl, { responseType: "arraybuffer" });
+            const tsFilePath = path.join(outputDir, `${sbatId}_segment_${i}_${j}.ts`);
+            await fs.writeFile(tsFilePath, segmentResponse.data);
+            return { index: j, path: tsFilePath };
+          })
+        );
+
+        const downloadedSegments = await Promise.all(downloadPromises);
+
+        // Sort segments to ensure correct order
+        downloadedSegments.sort((a, b) => a.index - b.index);
+
+        // Add sorted paths to allTsFilePaths
+        allTsFilePaths.push(...downloadedSegments.map(segment => `file '${segment.path}'`));
+
+        console.log(`[${new Date().toISOString()}] All segments for m3u8 ${i + 1} downloaded and sorted`);
       } catch (error) {
         console.error(`[${new Date().toISOString()}] Error processing m3u8 ${i + 1}:`, error);
         // Continue with the next m3u8 URL
@@ -158,9 +173,10 @@ async function processVideo(sbatId, userEmail) {
     console.log(`[${new Date().toISOString()}] Cleaning up temporary files`);
     await fs.unlink(fileListPath);
     await fs.unlink(mp3File);
+    await fs.unlink(mergedFile);
     const tempFiles = await fs.readdir(outputDir);
     for (const file of tempFiles) {
-      if (file.startsWith("segment_") || file === `${sbatId}.ts`) {
+      if (file.startsWith(`${sbatId}_segment_`) || file === `${sbatId}.ts`) {
         await fs.unlink(path.join(outputDir, file));
       }
     }
@@ -200,7 +216,7 @@ async function processVideo(sbatId, userEmail) {
       await user.save();
     }
 
-    console.log(`[${new Date().toISOString()}] Video information saved to database`);
+    console.log(`[${new Date().toISOString()}] Video information saved to database. Video ID: ${video._id}, User ID: ${user._id}`);
 
     console.log(`[${new Date().toISOString()}] Video processing completed successfully`);
     return { notes, transcription: transcript };
@@ -228,7 +244,11 @@ async function generateTranscript(mp3FilePath) {
   try {
     const { result, error } = await deepgram.listen.prerecorded.transcribeFile(
       await fs.readFile(mp3FilePath),
-      { model: "nova-2", smart_format: true, timeout: 300000 } // Set a longer timeout
+      { 
+        model: "nova-2", 
+        smart_format: true, 
+        timeout: 300000 // 5 minutes timeout
+      }
     );
 
     if (error) throw error;
