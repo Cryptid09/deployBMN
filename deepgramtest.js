@@ -25,15 +25,15 @@ const transcribeFileTest = async () => {
     }
 
     // STEP 4: Log the transcription result
-    console.log("Transcription result:", result);
+    //console.log("Transcription result:", result);
 
     // STEP 5: Optionally, save the result to a JSON file
     const transcriptFilePath = './output/test_transcript.json';
     fs.writeFileSync(transcriptFilePath, JSON.stringify(result, null, 2));
-    console.log(`Transcript saved to ${transcriptFilePath}`);
+    //console.log(`Transcript saved to ${transcriptFilePath}`);
 
   } catch (error) {
-    console.error("Error during transcription:", error.message);
+    //console.error("Error during transcription:", error.message);
   }
 };
 

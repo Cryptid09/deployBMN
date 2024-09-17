@@ -192,7 +192,7 @@ app.get("/user-status/:userEmail", async (req, res) => {
 
 // Process video route with increased timeout
 app.post("/process-video", async (req, res) => {
-  // Increase the timeout to 10 minutes (600000 ms)
+  //Increase the timeout to 10 minutes (600000 ms)
   req.setTimeout(600000);
 
   const { sbatId, userEmail } = req.body;
@@ -337,7 +337,7 @@ app.get("/notes/:email", async (req, res) => {
     console.log(`Notes list created with ${notesList.length} items`);
     res.json({ notesList });
   } catch (error) {
-    console.error("Error fetching notes list:", error);
+   console.error("Error fetching notes list:", error);
     res.status(500).json({ error: "Internal server error", details: error.message, stack: error.stack });
   }
 });
@@ -471,7 +471,7 @@ app.post("/auth/signup-with-referral", async (req, res) => {
     // Find referrer and grant free trial
     if (referralCode) {
       try {
-        console.log(`[${new Date().toISOString()}] Attempting to update referrer with ID: ${referralCode}`);
+       console.log(`[${new Date().toISOString()}] Attempting to update referrer with ID: ${referralCode}`);
         const referrer = await User.findById(referralCode);
         console.log(`[${new Date().toISOString()}] Referrer before update:`, referrer);
 
@@ -487,7 +487,7 @@ app.post("/auth/signup-with-referral", async (req, res) => {
           console.log(`[${new Date().toISOString()}] Referrer with ID ${referralCode} not found`);
         }
       } catch (referrerError) {
-        console.error(`[${new Date().toISOString()}] Error updating referrer:`, referrerError);
+         console.error(`[${new Date().toISOString()}] Error updating referrer:`, referrerError);
       }
     }
 

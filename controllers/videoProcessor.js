@@ -58,7 +58,7 @@ async function processVideo(sbatId, userEmail) {
 
     for (let i = 0; i < m3u8Urls.length; i++) {
       const m3u8Url = m3u8Urls[i];
-      console.log(`[${new Date().toISOString()}] Processing m3u8 ${i + 1}/${m3u8Urls.length}: ${m3u8Url}`);
+     console.log(`[${new Date().toISOString()}] Processing m3u8 ${i + 1}/${m3u8Urls.length}: ${m3u8Url}`);
 
       try {
         const m3u8Response = await axios.get(m3u8Url);
