@@ -18,7 +18,7 @@ const userRoutes = require("./routes/userRoutes");
 const connectDB = require("./config/database");
 const Feedback = require('./models/review');
 const jwt = require("jsonwebtoken");
-const MAX_TRIALS = 3; // or whatever number you want for the maximum free trials
+const MAX_TRIALS = 100; // or whatever number you want for the maximum free trials
 
 const app = express();
 const server = http.createServer(app);
