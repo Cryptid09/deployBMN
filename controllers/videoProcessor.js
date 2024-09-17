@@ -274,7 +274,17 @@ async function generateNotesFromTranscript(transcript) {
   const completion = await openai.chat.completions.create({
     messages: [
       { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: `Generate detailed notes for the attached lecture transcript in markdown format. In the notes ,keep same sequence as lecture, cover everything in detail. Include detailed explainations, multiple examples, code snippetes if discussed in class, Make sure notes are self-sufficient and can be used to cover all topics in detail discussed in class and doesn't miss any important information. \n\n${transcript} \n\n` },
+      { role: "user", content: `Generate detailed notes from the following lecture transcript in markdown format. The notes should:
+
+1. Follow the same sequence as the lecture, without omitting any information.
+2. Provide detailed explanations for all topics discussed.
+3. Include multiple real-world examples if provided in the lecture.
+4. Cover all approaches and solutions discussed.
+5. If any code snippets are covered in the lecture, include them in full, with explanations of each part of the code and how it works.
+6. Make sure to provide clarifications for any key concepts, breaking down complex topics into easier-to-understand parts.
+7. Organize the notes with proper headings and subheadings for easy readability.
+
+Here is the lecture transcript: \n\n ${transcript}` },
     ],
     model: "gpt-4o-mini",
   });
