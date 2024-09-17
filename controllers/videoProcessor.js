@@ -47,6 +47,10 @@ async function processVideo(sbatId, userEmail) {
     await fs.mkdir(outputDir, { recursive: true });
     console.log(`[${new Date().toISOString()}] Created output directory: ${outputDir}`);
 
+    const jobOutputDir = path.join(outputDir, sbatId);
+    await fs.mkdir(jobOutputDir, { recursive: true });
+    console.log(`[${new Date().toISOString()}] Created job output directory: ${jobOutputDir}`);
+
     const pLimit = (await import('p-limit')).default;
     const limit = pLimit(50); // Adjust the concurrency limit as needed
 
@@ -78,7 +82,7 @@ async function processVideo(sbatId, userEmail) {
             const segmentUrl = new URL(segment.uri, baseUrl).toString();
             console.log(`[${new Date().toISOString()}] Downloading segment ${j + 1}/${segments.length} from m3u8 ${i + 1}`);
             const segmentResponse = await axios.get(segmentUrl, { responseType: "arraybuffer" });
-            const tsFilePath = path.join(outputDir, `${sbatId}_segment_${i}_${j}.ts`);
+            const tsFilePath = path.join(jobOutputDir, `${sbatId}_segment_${i}_${j}.ts`);
             await fs.writeFile(tsFilePath, segmentResponse.data);
             return { index: j, path: tsFilePath };
           })
@@ -104,14 +108,14 @@ async function processVideo(sbatId, userEmail) {
     }
 
     console.log(`[${new Date().toISOString()}] All segments downloaded. Preparing to merge.`);
-    const fileListPath = path.join(outputDir, "filelist.txt");
+    const fileListPath = path.join(jobOutputDir, "filelist.txt");
     await fs.writeFile(fileListPath, allTsFilePaths.join("\n"));
     console.log(`[${new Date().toISOString()}] Created file list at ${fileListPath}`);
 
     console.log(`File list contents:`);
     console.log(await fs.readFile(fileListPath, 'utf8'));
 
-    const mergedFile = path.join(outputDir, `${sbatId}.ts`);
+    const mergedFile = path.join(jobOutputDir, `${sbatId}.ts`);
     const mergeCommand = `ffmpeg -f concat -safe 0 -i "${fileListPath}" -c copy "${mergedFile}"`;
     console.log(`[${new Date().toISOString()}] Merging segments with command: ${mergeCommand}`);
 
@@ -146,7 +150,7 @@ async function processVideo(sbatId, userEmail) {
       throw error;
     }
 
-    const mp3File = path.join(outputDir, `${sbatId}.mp3`);
+    const mp3File = path.join(jobOutputDir, `${sbatId}.mp3`);
     const convertCommand = `ffmpeg -i "${mergedFile}" -q:a 0 -map a "${mp3File}"`;
     console.log(`[${new Date().toISOString()}] Converting to mp3 with command: ${convertCommand}`);
 
@@ -170,17 +174,9 @@ async function processVideo(sbatId, userEmail) {
     const notes = await generateNotesFromTranscript(transcript);
     console.log(`[${new Date().toISOString()}] Notes generated`);
 
-    console.log(`[${new Date().toISOString()}] Cleaning up temporary files`);
-    await fs.unlink(fileListPath);
-    await fs.unlink(mp3File);
-    await fs.unlink(mergedFile);
-    const tempFiles = await fs.readdir(outputDir);
-    for (const file of tempFiles) {
-      if (file.startsWith(`${sbatId}_segment_`) || file === `${sbatId}.ts`) {
-        await fs.unlink(path.join(outputDir, file));
-      }
-    }
-    console.log(`[${new Date().toISOString()}] Temporary files cleaned up`);
+    console.log(`[${new Date().toISOString()}] Cleaning up temporary files for sbatId: ${sbatId}`);
+    await fs.rm(jobOutputDir, { recursive: true, force: true });
+    console.log(`[${new Date().toISOString()}] Temporary files cleaned up for sbatId: ${sbatId}`);
 
     console.log(`[${new Date().toISOString()}] Saving video information to database`);
 
