@@ -281,10 +281,12 @@ async function generateNotesFromTranscript(transcript) {
 3. Include multiple real-world examples if provided in the lecture.
 4. Cover all approaches and solutions discussed.
 5. If any code snippets are covered in the lecture, include them in full, with explanations of each part of the code and how it works.
-6. Make sure to provide clarifications for any key concepts, breaking down complex topics into easier-to-understand parts.
-7. Organize the notes with proper headings and subheadings for easy readability.
+6. If it's a data structure lecture, include the code in C++ if it's covered in class using C++, otherwise, use Java for code snippets.
+7. Make sure to provide clarifications for any key concepts, breaking down complex topics into easier-to-understand parts.
+8. Organize the notes with proper headings and subheadings for easy readability.
 
-Here is the lecture transcript: \n\n ${transcript}` },
+Here is the lecture transcript: 
+${transcript}` },
     ],
     model: "gpt-4o-mini",
   });
