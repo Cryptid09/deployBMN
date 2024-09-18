@@ -30,6 +30,12 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
+    // Email validation
+    const allowedDomains = ["@sst.scaler.com", "@scaler.com"];
+    if (!allowedDomains.some(domain => email.endsWith(domain))) {
+      return res.status(400).json({ message: 'Please use an email address ending with @sst.scaler.com or @scaler.com' });
+    }
+
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
