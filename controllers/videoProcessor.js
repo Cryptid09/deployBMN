@@ -11,7 +11,7 @@ const Video = require("../models/Video");
 const User = require("../models/User");
 const { v4: uuidv4 } = require('uuid');
 const Redis = require('ioredis');
-const redis = new Redis(); // Assuming Redis is running on default port
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 connectDB();
 dotenv.config();
