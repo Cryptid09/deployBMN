@@ -9,6 +9,9 @@ const dotenv = require("dotenv");
 const connectDB = require("../config/database");
 const Video = require("../models/Video");
 const User = require("../models/User");
+const { v4: uuidv4 } = require('uuid');
+const Redis = require('ioredis');
+const redis = new Redis(); // Assuming Redis is running on default port
 
 connectDB();
 dotenv.config();
@@ -25,9 +28,23 @@ const MAX_RETRIES = 3;
 
 async function processVideo(sbatId, userEmail) {
   console.log(`[${new Date().toISOString()}] Processing video for sbatId: ${sbatId}, userEmail: ${userEmail}`);
-  console.log(`[${new Date().toISOString()}] Starting video processing for sbatId: ${sbatId}, userEmail: ${userEmail}`);
+
+  const jobId = `${sbatId}_${uuidv4()}`;
+  const lockKey = `lock:${sbatId}`;
 
   try {
+    // Try to acquire a lock
+    const acquired = await redis.set(lockKey, jobId, 'NX', 'EX', 600); // 10 minutes lock
+
+    if (!acquired) {
+      console.log(`[${new Date().toISOString()}] Another job is processing this video. Waiting for results.`);
+      return await waitForExistingJob(sbatId, userEmail);
+    }
+
+    console.log(`[${new Date().toISOString()}] Lock acquired for jobId: ${jobId}`);
+
+    console.log(`[${new Date().toISOString()}] Starting video processing for sbatId: ${sbatId}, userEmail: ${userEmail}`);
+
     console.log(`[${new Date().toISOString()}] Fetching m3u8 URLs`);
     const apiResponse = await axios.get(
       `https://metabase.interviewbit.com/api/embed/card/eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZXNvdXJjZSI6eyJxdWVzdGlvbiI6MjA2MDN9LCJwYXJhbXMiOnt9LCJleHAiOjE3NDE3MDk1NTN9.Z6ob2UjkUXJyfNe8wFc2i2qnfevKkIa4Y63Awmrde3g/query`,
@@ -47,7 +64,7 @@ async function processVideo(sbatId, userEmail) {
     await fs.mkdir(outputDir, { recursive: true });
     console.log(`[${new Date().toISOString()}] Created output directory: ${outputDir}`);
 
-    const jobOutputDir = path.join(outputDir, sbatId);
+    const jobOutputDir = path.join(outputDir, jobId);
     await fs.mkdir(jobOutputDir, { recursive: true });
     console.log(`[${new Date().toISOString()}] Created job output directory: ${jobOutputDir}`);
 
@@ -227,10 +244,19 @@ async function processVideo(sbatId, userEmail) {
     });
 
     console.log(`[${new Date().toISOString()}] Video processing completed successfully`);
-    return { notes, transcription: transcript, notesGenerated: user.notesGenerated };
+
+    // After processing is complete
+    const result = { notes, transcription: transcript, notesGenerated: user.notesGenerated };
+    await redis.set(`result:${sbatId}`, JSON.stringify(result), 'EX', 3600); // Store result for 1 hour
+
+    return result;
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error in processVideo:`, error);
     throw error;
+  } finally {
+    // Release the lock
+    await redis.del(lockKey);
+    console.log(`[${new Date().toISOString()}] Lock released for jobId: ${jobId}`);
   }
 }
 
@@ -287,6 +313,30 @@ ${transcript}` },
     model: "gpt-4o-mini",
   });
   return completion.choices[0].message.content;
+}
+
+async function waitForExistingJob(sbatId, userEmail) {
+  const resultKey = `result:${sbatId}`;
+  let attempts = 0;
+  const maxAttempts = 60; // Wait for up to 5 minutes (60 * 5 seconds)
+
+  while (attempts < maxAttempts) {
+    const result = await redis.get(resultKey);
+    if (result) {
+      const parsedResult = JSON.parse(result);
+      // Update user's data
+      const user = await User.findOne({ email: userEmail });
+      if (user) {
+        user.notesGenerated += 1;
+        await user.save();
+      }
+      return parsedResult;
+    }
+    await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
+    attempts++;
+  }
+
+  throw new Error('Timed out waiting for video processing');
 }
 
 module.exports = { processVideo };

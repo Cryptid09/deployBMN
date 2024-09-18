@@ -38,7 +38,8 @@
     "path": "^0.12.7",
     "razorpay": "^2.9.4",
     "react-google-login": "^5.2.2",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22",
