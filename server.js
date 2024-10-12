@@ -20,7 +20,7 @@ const Feedback = require('./models/review');
 const jwt = require("jsonwebtoken");
 const MAX_TRIALS = 100; // or whatever number you want for the maximum free trials
 const Redis = require('redis');
-const redis = Redis.createClient(process.env.REDIS_URL || 'redis://localhost:6379');
+const redis = Redis.createClient(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
 redis.on('error', (err) => console.log('Redis Client Error', err));
 redis.connect();
