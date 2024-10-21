@@ -295,17 +295,28 @@ async function generateTranscript(mp3FilePath) {
 async function generateNotesFromTranscript(transcript) { 
   const completion = await openai.chat.completions.create({
     messages: [
-      { role: "system", content: "You are a helpful assistant." },
-      { role: "user", content: `Generate detailed notes from the following lecture transcript in markdown format. The notes should:
+      { role: "system", content: "You are an expert educational assistant capable of understanding and summarizing lectures on various subjects." },
+      { role: "user", content: `Generate comprehensive detailed and well-structured notes from the following lecture transcript. The notes should:
 
-1. Follow the same sequence as the lecture, without omitting any information.
-2. Provide detailed explanations for all topics discussed.
-3. Include multiple real-world examples if provided in the lecture.
-4. Cover all approaches and solutions discussed.
-5. If any code snippets are covered in the lecture, include them in full, with explanations of each part of the code and how it works.
-6. If it's a data structure lecture, include the code in C++ if it's covered in class using C++, otherwise, use Java for code snippets.
-7. Make sure to provide clarifications for any key concepts, breaking down complex topics into easier-to-understand parts.
-8. Organize the notes with proper headings and subheadings for easy readability.
+1. Be in markdown format, using appropriate headings, subheadings, lists, and other markdown elements.
+2. Accurately reflect the content and structure of the lecture, maintaining the original sequence of topics.
+3. Provide detailed explanations for all concepts discussed, ensuring clarity and depth.
+4. Include any examples, case studies, or real-world applications mentioned in the lecture.
+5. Cover all approaches, methodologies, or problem-solving techniques discussed.
+6. For technical subjects (e.g., programming, data structures):
+   - Include any code snippets or algorithms discussed, with explanations for each part.
+   - Use the programming language used in the lecture (e.g., C++, Java, Python).
+7. For non-technical subjects (e.g., finance, economics, marketing):
+   - Focus on key theories, models, and practical applications.
+   - Include any relevant formulas, diagrams, or frameworks mentioned.
+8. Break down complex topics into easily understandable parts, providing clarifications where necessary.
+9. Use markdown formatting to enhance readability:
+   - Use ## for main headings and ### for subheadings
+   - Use bullet points or numbered lists where appropriate
+   - Use **bold** or *italic* for emphasis
+   - Use \`code blocks\` for technical terms or short code snippets
+   - Use larger code blocks for longer code examples
+10. Avoid adding any information or examples not explicitly mentioned in the lecture.
 
 Here is the lecture transcript: 
 ${transcript}` },
